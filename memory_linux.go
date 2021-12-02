@@ -31,7 +31,6 @@ func reclaimableAsUsed() (*mem.VirtualMemoryStat, error) {
 }
 
 func reclaimableAsUsedParseMemInfo(filename string) (*mem.VirtualMemoryStat, error) {
-	var i int
 	var line string
 
 	ret := &mem.VirtualMemoryStat{}
