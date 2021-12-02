@@ -78,7 +78,7 @@ func compressPayload(payload Payload) (b []byte) {
 	if err2 != nil {
 		log.Printf("Error formatting JSON for metrics api: %v", err2)
 	}
-	log.Printf("Payload: %s", j)
+	//log.Printf("Payload: %s", j)
 
 	var gzBuf bytes.Buffer
 	gz := gzip.NewWriter(&gzBuf)
