@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/newrelic/infrastructure-agent/pkg/metrics/network"
 )
 
 type Metric map[string]interface{}
@@ -112,9 +110,11 @@ func main() {
 	cpuMonitor := NewCPUMonitor()
 	memoryMonitor := NewMemoryMonitor()
 	networkMonitor := NewNetworkMonitor()
+	diskMonitor := NewDiskMonitor()
 
-	// Prime CPU monitor with first call
+	// Prime CPU and Disk monitor with first calls
 	_, err = cpuMonitor.Sample()
+	_, err = diskMonitor.Sample()  // TODO:  Figure out why it gets 0's
 	time.Sleep(time.Second)
 
 	// Configure NR metrics API client
@@ -156,15 +156,18 @@ func main() {
 			log.Printf("Error: networkMonitor %v", err)
 		} else {
 			for _, sample := range netSample {
-				entries = append(entries,
-					data.getNetworkMetric(sample.(*network.NetworkSample), "ReceiveBytesPerSec"))
-				entries = append(entries,
-					data.getNetworkMetric(sample.(*network.NetworkSample), "ReceiveErrorsPerSec"))
-				entries = append(entries,
-					data.getNetworkMetric(sample.(*network.NetworkSample), "TransmitBytesPerSec"))
-				entries = append(entries,
-					data.getNetworkMetric(sample.(*network.NetworkSample), "TransmitErrorsPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "ReceiveBytesPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "ReceiveErrorsPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "TransmitBytesPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "TransmitErrorsPerSec"))
 			}
+		}
+
+		diskSample, err := diskMonitor.Sample()
+		if err != nil {
+			log.Printf("Error: networkMonitor %v", err)
+		} else {
+			log.Printf("DiskSample: %+v", diskSample)
 		}
 
 		// Format for metrics API

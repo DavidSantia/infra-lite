@@ -4,24 +4,15 @@ import (
 	"github.com/newrelic/infrastructure-agent/pkg/metrics/network"
 )
 
-type NetworkEvent struct {
-	InterfaceName        string
-	HardwareAddress      string
-	IpV4Address          string
-	IpV6Address          string
-	State                string
-	ReceiveBytesPerSec   float64
-	ReceiveErrorsPerSec  float64
-	TransmitBytesPerSec  float64
-	TransmitErrorsPerSec float64
-}
+type NetworkSample *network.NetworkSample
 
 func NewNetworkMonitor() network.NetworkSampler {
 	return network.NetworkSampler{}
 }
 
-func (data *ConfigData) getNetworkMetric(ns *network.NetworkSample, name string) (metric Metric) {
+func (data *ConfigData) getNetworkMetric(sample interface{}, name string) (metric Metric) {
 	var value float64
+	ns := sample.(*network.NetworkSample)
 
 	if name == "ReceiveBytesPerSec" && ns.ReceiveBytesPerSec != nil {
 		value = *ns.ReceiveBytesPerSec
