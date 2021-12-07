@@ -11,6 +11,7 @@ const (
 	DefaultPollInterval = "30s"
 	DefaultAppName      = "My Application"
 	DefaultWorkloadName = "My Workload"
+	DefaultPrefix       = "container"
 	NrMetricApi         = "https://metric-api.newrelic.com/metric/v1"
 )
 
@@ -21,6 +22,8 @@ type ConfigData struct {
 	Hostname     string
 	Service      string
 	Workload     string
+	Prefix       string
+	SampleTime   int64
 }
 
 func validateFile(file string) (err error) {
@@ -57,6 +60,10 @@ func (data *ConfigData) initConfig() {
 	data.Workload = os.Getenv("WORKLOAD_NAME")
 	if len(data.Workload) == 0 {
 		data.Workload = DefaultWorkloadName
+	}
+	data.Prefix = os.Getenv("METRIC_PREFIX")
+	if len(data.Prefix) == 0 {
+		data.Prefix = DefaultPrefix
 	}
 
 	// Get poll interval

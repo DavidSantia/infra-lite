@@ -12,9 +12,11 @@ import (
 	"time"
 )
 
+type Metric map[string]interface{}
+
 // To send JSON to NR Logs API
 type Payload struct {
-	Metrics []map[string]interface{} `json:"metrics"`
+	Metrics []Metric `json:"metrics"`
 }
 
 // Make API request with error retry
@@ -55,18 +57,18 @@ func retryQuery(client *http.Client, method, url string, data []byte, headers []
 	return
 }
 
-func (data *ConfigData) makeMetric(name string, value float64, ts time.Time) (metric map[string]interface{}) {
+func (data *ConfigData) makeMetric(name string, value float64) (metric Metric) {
 	// Create metric API entry
 	attributes := map[string]string{
 		"workload": data.Workload,
 		"service":  data.Service,
 		"hostname": data.Hostname,
 	}
-	metric = map[string]interface{}{
-		"name":       name,
+	metric = Metric{
+		"name":       data.Prefix + "." + name,
 		"type":       "gauge",
 		"value":      value,
-		"timestamp":  ts.Unix(),
+		"timestamp":  data.SampleTime,
 		"attributes": attributes,
 	}
 	return
@@ -107,9 +109,12 @@ func main() {
 	// Initialize monitors
 	cpuMonitor := NewCPUMonitor()
 	memoryMonitor := NewMemoryMonitor()
+	networkMonitor := NewNetworkMonitor()
+	diskMonitor := NewDiskMonitor()
 
-	// Prime CPU monitor with first call
+	// Prime CPU and Disk monitor with first calls
 	_, err = cpuMonitor.Sample()
+	_, err = diskMonitor.Sample()  // TODO:  Figure out why it gets 0's
 	time.Sleep(time.Second)
 
 	// Configure NR metrics API client
@@ -119,31 +124,51 @@ func main() {
 	// Start poll loop
 	for {
 		startTime := time.Now()
-		entries := make([]map[string]interface{}, 0)
+		data.SampleTime = startTime.Unix()
+		entries := make([]Metric, 0)
 
 		// Fetch metrics
 		cpuSample, err = cpuMonitor.Sample()
 		if err != nil {
 			log.Printf("Error: cpuMonitor %v", err)
-			continue
+		} else {
+			entries = append(entries, data.makeMetric("CpuPercent", cpuSample.CPUPercent))
+			entries = append(entries, data.makeMetric("CpuUserPercent", cpuSample.CPUUserPercent))
+			entries = append(entries, data.makeMetric("CpuSystemPercent", cpuSample.CPUSystemPercent))
 		}
-		entries = append(entries, data.makeMetric("cpuPercent", cpuSample.CPUPercent, startTime))
-		entries = append(entries, data.makeMetric("cpuUserPercent", cpuSample.CPUUserPercent, startTime))
-		entries = append(entries, data.makeMetric("cpuSystemPercent", cpuSample.CPUSystemPercent, startTime))
 		memSample, err = memoryMonitor.Sample()
 		if err != nil {
 			log.Printf("Error: memoryMonitor %v", err)
-			continue
+		} else {
+			entries = append(entries, data.makeMetric("MemoryTotalBytes", memSample.MemoryTotal))
+			entries = append(entries, data.makeMetric("MemoryFreeBytes", memSample.MemoryFree))
+			entries = append(entries, data.makeMetric("MemoryUsedBytes", memSample.MemoryUsed))
+			entries = append(entries, data.makeMetric("MemoryFreePercent", memSample.MemoryFreePercent))
+			entries = append(entries, data.makeMetric("MemoryUsedPercent", memSample.MemoryUsedPercent))
+			entries = append(entries, data.makeMetric("MemoryCachedBytes", memSample.MemoryCachedBytes))
+			entries = append(entries, data.makeMetric("SwapTotalBytes", memSample.SwapTotal))
+			entries = append(entries, data.makeMetric("SwapFreeBytes", memSample.SwapFree))
+			entries = append(entries, data.makeMetric("SwapUsedBytes", memSample.SwapUsed))
 		}
-		entries = append(entries, data.makeMetric("memoryTotalBytes", memSample.MemoryTotal, startTime))
-		entries = append(entries, data.makeMetric("memoryFreeBytes", memSample.MemoryFree, startTime))
-		entries = append(entries, data.makeMetric("memoryUsedBytes", memSample.MemoryUsed, startTime))
-		entries = append(entries, data.makeMetric("memoryFreePercent", memSample.MemoryFreePercent, startTime))
-		entries = append(entries, data.makeMetric("memoryUsedPercent", memSample.MemoryUsedPercent, startTime))
-		entries = append(entries, data.makeMetric("memoryCachedBytes", memSample.MemoryCachedBytes, startTime))
-		entries = append(entries, data.makeMetric("swapTotalBytes", memSample.SwapTotal, startTime))
-		entries = append(entries, data.makeMetric("swapFreeBytes", memSample.SwapFree, startTime))
-		entries = append(entries, data.makeMetric("swapUsedBytes", memSample.SwapUsed, startTime))
+
+		netSample, err := networkMonitor.Sample()
+		if err != nil {
+			log.Printf("Error: networkMonitor %v", err)
+		} else {
+			for _, sample := range netSample {
+				entries = append(entries, data.getNetworkMetric(sample, "ReceiveBytesPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "ReceiveErrorsPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "TransmitBytesPerSec"))
+				entries = append(entries, data.getNetworkMetric(sample, "TransmitErrorsPerSec"))
+			}
+		}
+
+		diskSample, err := diskMonitor.Sample()
+		if err != nil {
+			log.Printf("Error: networkMonitor %v", err)
+		} else {
+			log.Printf("DiskSample: %+v", diskSample)
+		}
 
 		// Format for metrics API
 		b := compressPayload(Payload{entries})
