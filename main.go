@@ -8,10 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -105,15 +102,6 @@ func main() {
 	var cpuSample *CPUSample
 	var memSample *MemorySample
 
-	// Graceful shutdown
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sigs := <-sigs
-		log.Printf("Process %v - Shutting down", sigs)
-		os.Exit(0)
-	}()
-
 	// Get configuration from env vars and/or newrelic.yml
 	data := ConfigData{}
 	data.initConfig()
@@ -126,7 +114,7 @@ func main() {
 
 	// Prime CPU and Disk monitor with first calls
 	_, err = cpuMonitor.Sample()
-	_, err = diskMonitor.Sample()  // TODO:  Figure out why it gets 0's
+	_, err = diskMonitor.Sample() // TODO:  Figure out why it gets 0's
 	time.Sleep(time.Second)
 
 	// Configure NR metrics API client

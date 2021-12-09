@@ -6,6 +6,7 @@ To use this utility, configure the following environment variables:
 
 * NEW_RELIC_LICENSE_KEY
 * NEW_RELIC_APP_NAME
+* NRIA_LOG_FILE
 * WORKLOAD_NAME
 * POLL_INTERVAL
 * METRIC_PREFIX
