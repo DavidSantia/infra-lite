@@ -330,7 +330,7 @@ func deviceMapperInfo(isContainerized bool) (mounts []MountInfoStat) {
 		}
 		// could be optimized to not create the struct in the first place
 		if !isSupportedFs(mountInfo.FSType) {
-			log.Printf("Warning: storageSample - unsupported file system %s line %de (%s)", mountInfo.FSType, lineno, line)
+			log.Printf("Warning: storageSample - unsupported file system %s line %d (%s)", mountInfo.FSType, lineno, line)
 			continue
 		}
 		// nil = unsupported fs
