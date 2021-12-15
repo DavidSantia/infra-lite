@@ -110,11 +110,10 @@ func main() {
 	cpuMonitor := NewCPUMonitor()
 	memoryMonitor := NewMemoryMonitor()
 	networkMonitor := NewNetworkMonitor()
-	diskMonitor := NewDiskMonitor()
+	storageMonitor := NewSampler(data.PollInterval)
 
 	// Prime CPU and Disk monitor with first calls
 	_, err = cpuMonitor.Sample()
-	_, err = diskMonitor.Sample() // TODO:  Figure out why it gets 0's
 	time.Sleep(time.Second)
 
 	// Configure NR metrics API client
@@ -163,11 +162,13 @@ func main() {
 			}
 		}
 
-		diskSample, err := diskMonitor.Sample()
+		storageSample, err := storageMonitor.Sample()
 		if err != nil {
-			log.Printf("Error: networkMonitor %v", err)
+			log.Printf("Error: storageMonitor %v", err)
 		} else {
-			log.Printf("DiskSample: %+v", diskSample)
+			for _, s := range storageSample {
+				log.Printf("StorageSample: %+v", s)
+			}
 		}
 
 		// Format for metrics API
