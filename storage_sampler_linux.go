@@ -325,12 +325,12 @@ func deviceMapperInfo(isContainerized bool) (mounts []MountInfoStat) {
 	for lineno, line := range lines {
 		mountInfo, err := parseMountFile(mountsFile, line)
 		if err != nil {
-			log.Printf("Error: storageSample - can't parse mount info line %d (%s)", lineno, line)
+			log.Printf("Error: storageSample - can't parse mount info line %d (%s)", lineno+1, line)
 			continue
 		}
 		// could be optimized to not create the struct in the first place
 		if !isSupportedFs(mountInfo.FSType) {
-			log.Printf("Warning: storageSample - unsupported file system %s line %d (%s)", mountInfo.FSType, lineno, line)
+			log.Printf("Warning: storageSample - unsupported file system %s line %d (%s)", mountInfo.FSType, lineno+1, line)
 			continue
 		}
 		// nil = unsupported fs
