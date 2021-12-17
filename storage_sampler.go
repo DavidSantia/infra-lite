@@ -89,6 +89,36 @@ func NewSampler(interval time.Duration) *Sampler {
 	}
 }
 
+func (data *ConfigData) getStorageMetric(sample interface{}, name string) (metric Metric) {
+	var value float64
+	ss := sample.(*Sample).BaseSample
+
+	if name == "UsedBytes" && ss.UsedBytes != nil {
+		value = *ss.UsedBytes
+	} else if name == "UsedPercent" && ss.UsedPercent != nil {
+		value = *ss.UsedPercent
+	} else if name == "FreeBytes" && ss.FreeBytes != nil {
+		value = *ss.FreeBytes
+	} else if name == "FreePercent" && ss.FreePercent != nil {
+		value = *ss.FreePercent
+	} else if name == "TotalBytes" && ss.TotalBytes != nil {
+		value = *ss.TotalBytes
+	} else if name == "ReadBytesPerSec" && ss.ReadBytesPerSec != nil {
+		value = *ss.ReadBytesPerSec
+	} else if name == "WriteBytesPerSec" && ss.WriteBytesPerSec != nil {
+		value = *ss.WriteBytesPerSec
+	} else if name == "ReadWriteBytesPerSecond" && ss.ReadWriteBytesPerSecond != nil {
+		value = *ss.ReadWriteBytesPerSecond
+	}
+
+	metric = data.makeMetric("Disk" + name, value)
+	metric["attributes"].(map[string]string)["mountPoint"] = ss.MountPoint
+	metric["attributes"].(map[string]string)["device"] = ss.Device
+	metric["attributes"].(map[string]string)["isReadOnly"] = ss.IsReadOnly
+	metric["attributes"].(map[string]string)["fileSystemType"] = ss.FileSystemType
+	return
+}
+
 func (p *PartitionStat) IsReadOnly() bool {
 	options := strings.Split(p.Opts, ",")
 	for _, o := range options {

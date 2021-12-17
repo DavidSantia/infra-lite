@@ -30,6 +30,8 @@ type ConfigData struct {
 	SampleTime   int64
 }
 
+var DebugLog bool
+
 func validateFile(file string) (err error) {
 	var dirInfo os.FileInfo
 
@@ -74,6 +76,8 @@ func (data *ConfigData) initConfig() {
 	if len(data.Logfile) == 0 {
 		data.Logfile = DefaultLogfile
 	}
+	verbose := os.Getenv("NRIA_VERBOSE")
+	DebugLog = len(verbose) > 0 && verbose != "0"
 
 	// Open log file
 	logfile, err = os.OpenFile(data.Logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)

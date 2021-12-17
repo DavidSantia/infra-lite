@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/newrelic/infrastructure-agent/pkg/sample"
 )
 
 type Metric map[string]interface{}
@@ -101,6 +103,7 @@ func main() {
 	var err error
 	var cpuSample *CPUSample
 	var memSample *MemorySample
+	var netSample, storageSample sample.EventBatch
 
 	// Get configuration from env vars and/or newrelic.yml
 	data := ConfigData{}
@@ -150,7 +153,7 @@ func main() {
 			entries = append(entries, data.makeMetric("SwapUsedBytes", memSample.SwapUsed))
 		}
 
-		netSample, err := networkMonitor.Sample()
+		netSample, err = networkMonitor.Sample()
 		if err != nil {
 			log.Printf("Error: networkMonitor %v", err)
 		} else {
@@ -162,12 +165,19 @@ func main() {
 			}
 		}
 
-		storageSample, err := storageMonitor.Sample()
+		storageSample, err = storageMonitor.Sample()
 		if err != nil {
 			log.Printf("Error: storageMonitor %v", err)
 		} else {
-			for _, s := range storageSample {
-				log.Printf("StorageSample: %+v", s)
+			for _, ss := range storageSample {
+				entries = append(entries, data.getStorageMetric(ss, "UsedBytes"))
+				entries = append(entries, data.getStorageMetric(ss, "UsedPercent"))
+				entries = append(entries, data.getStorageMetric(ss, "FreeBytes"))
+				entries = append(entries, data.getStorageMetric(ss, "FreePercent"))
+				entries = append(entries, data.getStorageMetric(ss, "TotalBytes"))
+				entries = append(entries, data.getStorageMetric(ss, "ReadBytesPerSec"))
+				entries = append(entries, data.getStorageMetric(ss, "WriteBytesPerSec"))
+				entries = append(entries, data.getStorageMetric(ss, "ReadWriteBytesPerSecond"))
 			}
 		}
 

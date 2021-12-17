@@ -227,11 +227,15 @@ func parseMountInfo(line string) (mi MountInfoStat, err error) {
 	fields := strings.Fields(line)
 	mountID, err := strconv.Atoi(fields[0])
 	if err != nil {
-		log.Println("Warning: storageSample - can't parse mount ID. Assuming zero.")
+		if DebugLog {
+			log.Println("Warning: storageSample - can't parse mount ID. Assuming zero.")
+		}
 	}
 	parentID, err := strconv.Atoi(fields[1])
 	if err != nil {
-		log.Println("Warning: storageSample - can't parse parent mount ID. Assuming zero.")
+		if DebugLog {
+			log.Println("Warning: storageSample - can't parse parent mount ID. Assuming zero.")
+		}
 	}
 
 	mi = MountInfoStat{
@@ -330,7 +334,9 @@ func deviceMapperInfo(isContainerized bool) (mounts []MountInfoStat) {
 		}
 		// could be optimized to not create the struct in the first place
 		if !isSupportedFs(mountInfo.FSType) {
-			log.Printf("Warning: storageSample - unsupported file system %s line %d (%s)", mountInfo.FSType, lineno+1, line)
+			if DebugLog {
+				log.Printf("Warning: storageSample - unsupported file system %s line %d (%s)", mountInfo.FSType, lineno+1, line)
+			}
 			continue
 		}
 		// nil = unsupported fs
