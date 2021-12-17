@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -12,6 +14,7 @@ const (
 	DefaultAppName      = "My Application"
 	DefaultWorkloadName = "My Workload"
 	DefaultPrefix       = "container"
+	DefaultLogfile      = "./infra-lite.log"
 	NrMetricApi         = "https://metric-api.newrelic.com/metric/v1"
 )
 
@@ -23,8 +26,11 @@ type ConfigData struct {
 	Service      string
 	Workload     string
 	Prefix       string
+	Logfile      string
 	SampleTime   int64
 }
+
+var DebugLog bool
 
 func validateFile(file string) (err error) {
 	var dirInfo os.FileInfo
@@ -47,6 +53,7 @@ func validateFile(file string) (err error) {
 
 func (data *ConfigData) initConfig() {
 	var err error
+	var logfile *os.File
 
 	// Get license key
 	data.LicenseKey = os.Getenv("NEW_RELIC_LICENSE_KEY")
@@ -65,6 +72,19 @@ func (data *ConfigData) initConfig() {
 	if len(data.Prefix) == 0 {
 		data.Prefix = DefaultPrefix
 	}
+	data.Logfile = os.Getenv("NRIA_LOG_FILE")
+	if len(data.Logfile) == 0 {
+		data.Logfile = DefaultLogfile
+	}
+	verbose := os.Getenv("NRIA_VERBOSE")
+	DebugLog = len(verbose) > 0 && verbose != "0"
+
+	// Open log file
+	logfile, err = os.OpenFile(data.Logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Error opening log file %v", err)
+	}
+	log.SetOutput(logfile)
 
 	// Get poll interval
 	pollInterval := os.Getenv("POLL_INTERVAL")
@@ -73,7 +93,7 @@ func (data *ConfigData) initConfig() {
 	}
 	data.PollInterval, err = time.ParseDuration(pollInterval)
 	if err != nil {
-		log.Fatalf("Error: could not parse env var POLL_INTERVAL: %s, must me a duration (ex: 1h)", err)
+		log.Fatalf("Error: could not parse env var POLL_INTERVAL: %s, must be a duration (ex: 1h)", err)
 	}
 
 	// Get hostname
@@ -81,6 +101,16 @@ func (data *ConfigData) initConfig() {
 	if err != nil {
 		log.Fatalf("Error: hostname of server %v", err)
 	}
+
+	// Graceful shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sigs := <-sigs
+		log.Printf("Process %v - Shutting down\n", sigs)
+		logfile.Close()
+		os.Exit(0)
+	}()
 
 	log.Printf("Service: %s", data.Service)
 	log.Printf("Workload: %s", data.Workload)

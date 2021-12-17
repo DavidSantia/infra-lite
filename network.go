@@ -23,7 +23,7 @@ func (data *ConfigData) getNetworkMetric(sample interface{}, name string) (metri
 	} else if name == "TransmitErrorsPerSec" && ns.TransmitErrorsPerSec != nil {
 		value = *ns.TransmitErrorsPerSec
 	}
-	metric = data.makeMetric(name, value)
+	metric = data.makeMetric("Network" + name, value)
 	metric["attributes"].(map[string]string)["interfaceName"] = ns.InterfaceName
 	metric["attributes"].(map[string]string)["hardwareAddress"] = ns.HardwareAddress
 	metric["attributes"].(map[string]string)["ipV4Address"] = ns.IpV4Address

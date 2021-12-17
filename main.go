@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/newrelic/infrastructure-agent/pkg/sample"
 )
 
 type Metric map[string]interface{}
@@ -101,6 +103,7 @@ func main() {
 	var err error
 	var cpuSample *CPUSample
 	var memSample *MemorySample
+	var netSample, storageSample sample.EventBatch
 
 	// Get configuration from env vars and/or newrelic.yml
 	data := ConfigData{}
@@ -110,11 +113,10 @@ func main() {
 	cpuMonitor := NewCPUMonitor()
 	memoryMonitor := NewMemoryMonitor()
 	networkMonitor := NewNetworkMonitor()
-	diskMonitor := NewDiskMonitor()
+	storageMonitor := NewSampler(data.PollInterval)
 
 	// Prime CPU and Disk monitor with first calls
 	_, err = cpuMonitor.Sample()
-	_, err = diskMonitor.Sample()  // TODO:  Figure out why it gets 0's
 	time.Sleep(time.Second)
 
 	// Configure NR metrics API client
@@ -151,7 +153,7 @@ func main() {
 			entries = append(entries, data.makeMetric("SwapUsedBytes", memSample.SwapUsed))
 		}
 
-		netSample, err := networkMonitor.Sample()
+		netSample, err = networkMonitor.Sample()
 		if err != nil {
 			log.Printf("Error: networkMonitor %v", err)
 		} else {
@@ -163,11 +165,20 @@ func main() {
 			}
 		}
 
-		diskSample, err := diskMonitor.Sample()
+		storageSample, err = storageMonitor.Sample()
 		if err != nil {
-			log.Printf("Error: networkMonitor %v", err)
+			log.Printf("Error: storageMonitor %v", err)
 		} else {
-			log.Printf("DiskSample: %+v", diskSample)
+			for _, ss := range storageSample {
+				entries = append(entries, data.getStorageMetric(ss, "UsedBytes"))
+				entries = append(entries, data.getStorageMetric(ss, "UsedPercent"))
+				entries = append(entries, data.getStorageMetric(ss, "FreeBytes"))
+				entries = append(entries, data.getStorageMetric(ss, "FreePercent"))
+				entries = append(entries, data.getStorageMetric(ss, "TotalBytes"))
+				entries = append(entries, data.getStorageMetric(ss, "ReadBytesPerSec"))
+				entries = append(entries, data.getStorageMetric(ss, "WriteBytesPerSec"))
+				entries = append(entries, data.getStorageMetric(ss, "ReadWriteBytesPerSecond"))
+			}
 		}
 
 		// Format for metrics API
